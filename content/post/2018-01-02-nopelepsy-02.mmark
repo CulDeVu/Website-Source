@@ -27,7 +27,7 @@ This is how the current version of Nopelepsy works. It takes in a video file (li
 
 <iframe width="480" height="270" src="https://www.youtube.com/embed/VCxveDEhV9s" frameborder="0" gesture="media" allow="encrypted-media" allowfullscreen></iframe> -->
 
-Definitions and 
+Definitions and Setup
 ===
 
 The method I currently use to detect and remove flashes has had a checkered past. Here I'm going to try to describe what I do to get the results that I do, and also some of what doesn't work. First though, we need to get some objectives and definitions out of the way. All of these are inspired or come straight from [the W3C accessibility spec](https://www.w3.org/WAI/GL/WCAG20/#general-thresholddef).
@@ -51,9 +51,65 @@ In Nopelepsy, we assume that yes, it's necessarily true that $p_A$ and $p_C$ mus
 
 From undergrad math we know that equivalence relations are exactly the same as partitions, and so we now have an efficient way of testing all potential flashes against every other potential flash: just test each again any one member of each of the partitions.
 
-That's all well and good, but what exactly is the relation? The thing is... I don't know. In any such definition, we want to not only capture the fact that the potential flashes are happening at the same time, but also that they have the same "shape." Here are some illustrations in which the former succeeds and the latter fails.
+That's all well and good, but what exactly is the relation? The thing is... I don't know. It's one of those things that I know when I see it, and I can point them out in concrete examples, but I can't give you a straight defintion. In any such definition, we want to not only capture the fact that the potential flashes are happening at the same time, but also that they have the same "shape." Here are some illustrations in which the former succeeds and the latter fails.
 
 [IMAGES HERE]
 
-Why is this a problem? Well we not only want to remove all flashes, but we also want to keep as much non-flashing stuff as possible. One major goal is to be as non-disruptive to the movie as possible, and that can't happen when two cars driving next to each other is enough to trigger the detector. However, I also don't know exactly what the relation should be, so I've decided to instead try to Frankenstein together a robust solution from various non-robust ones.
+Why is this a problem? Well we not only want to remove all flashes, but we also want to not detect as much non-flashing stuff as possible. One major goal is to be as non-disruptive to the movie as possible, and that can't happen when two cars driving next to each other is enough to trigger the detector. However, I also don't know exactly what the relation should be, so I've decided to instead try to Frankenstein together a robust solution from various non-robust ones.
+
+Let $\sim$ and $\sim'$ be two different ways of interpretting "concurrent" from the above discussion. Now let $\approx$ be another relation such that $p_X \sim p_Y$ and $p_X \sim' p_Y \iff p_X \approx p_Y$. Then $\approx$ is also an equivalence relation. So the idea is to come up with many of these relations that all do a good job at grouping together the potential flashes that are actually concurrent and then squish them all together like this!
+
+So now the question comes down to: what are some good candidates? I'm going to give the two that Nopelepsy has implemented and give some arguments as to why I think these are good candidates.
+
+Algorithm
+===
+
+Now that we've gone over what potential flashes are and how we group them together, let's look at the final algorithm as used by Nopelepsy at the time of writing. The input is a video file, along with some options and preferences, and the output is another "corrected" video file.
+
+Nopelepsy uses a streaming algorithm, so some of the results from the last iteration are piped back into detector again in the next iteration. The whole thing looks like this:
+
+```
+S := queue of video frames
+pre-fill S with one second of black frames
+
+for each frame in the video
+  push the current frame onto S
+
+  do the detection and modification directly to the frames in S
+
+  if S has a finished frame ready to write to disk
+    write that file
+
+  pop the front off of S
+```
+
+Needless to say, the "do the detection" part is the interesting one. The way this happens goes something like this:
+
+```
+function detectAndModify()
+  F := empty list of potential flash "ballots"
+
+  for every pixel in the video dimensions
+    look at its histogram and determine all potential flashes that could happen
+
+    for every potential detected flash
+      if it flashes concurrently with some potential flash in F, let that pixel "vote" on that flash in F
+      if not, create a new "ballot", vote on it, and then add it to F
+
+  optionally reduce F by looking at its neighbors
+
+  for every potential flash ballot in F
+    for every voter on that ballot
+      check to see if there are enough other voters around it (25% of the 0.024 steradian region around it)
+      if not, continue
+
+      there is now determined to be a general flash that corresponds to some domain of the voter pixel (the necessary information is all on the ballot)
+      modify the necessary frames of that voter to get rid of it
+```
+
+Hopefully now it's clear why we needed all that stuff about equivalence relations. In order to efficiently see if there are enough concurrent potential flashes in the area, we create buckets of potential flashes that are all concurrently flashing with each other. We can then determine which potential flashes from each bucket are actually part of a general flash by looking for neighboring items in that same bucket.
+
+However, it's not as clean as this. This is actually pretty slow, it's $O(w h n^2)$ for each iteration, where w,h are the dimensions of the image and n is the number of frames per second of the video (with some optimizations described below it's actually $O(w h n)$ ). In order to make this faster, Nopelepsy first resizes each frame to some amount decided on by the user.
+
+There's one more ambiguity that needs to be addressed still. It's not that hard to come up with a scenario in which more than 25% of the pixels in some neighborhood have potential flashes that agree with one in the center of the region, but for nearly none of them to have that same property. This is especially easy when the resizing (from the previous paragraph) is very aggressive. So the step between the detection and modification is to reduce the voters in each of the ballots in F so that each potential flash is surrounded enough other potential flashes, each of which are surrounded by enough in turn. This may seem like a lot of work, but it makes it so that more aggressive resizes of the video frames still look smooth in the final output, which means we can resize even more and speed up computation.
 

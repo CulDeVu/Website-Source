@@ -11,7 +11,7 @@ staticDir = "static"
 	bio = "Email: culdevu@gmail.com"
 
 [Params]
-    subtitle = "Just another site" # Subtitle of your site
+    subtitle = "An alternative to just talking to myself" # Subtitle of your site
     description = "The personal website of Daniel Taylor" # Description of your site
     opengraph = true
     readmore = false # Show "Read more" button in list if true
