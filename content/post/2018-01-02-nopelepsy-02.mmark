@@ -37,6 +37,8 @@ The method I currently use to detect and remove flashes has had a checkered past
 
 The dependence on sRGB luminance instead of some other color space shouldn't be necessary, but it's what the spec uses so I'm going to stick with that for now. The range of time that a potential flash is happening over will be called its **domain**. Also note that potential flashes can overlap and can nest inside each other.
 
+![](/2018-01-02-nopelepsy-02/potential.jpg)
+
 > Def. General flash:
 > When 25% or more of the pixels inside of any 0.024 steradian region (relative to the viewer) all experience a potential flash concurrently.
 
@@ -53,7 +55,8 @@ From undergrad math we know that equivalence relations are exactly the same as p
 
 That's all well and good, but what exactly is the relation? The thing is... I don't know. It's one of those things that I know when I see it, and I can point them out in concrete examples, but I can't give you a straight defintion. In any such definition, we want to not only capture the fact that the potential flashes are happening at the same time, but also that they have the same "shape." Here are some illustrations in which the former succeeds and the latter fails.
 
-[IMAGES HERE]
+| ![](/2018-01-02-nopelepsy-02/bad-shape-1.jpg) | ![](/2018-01-02-nopelepsy-02/bad-shape-2.jpg) |
+| --------------------------------------------- | --------------------------------------------- |
 
 Why is this a problem? Well we not only want to remove all flashes, but we also want to not detect as much non-flashing stuff as possible. One major goal is to be as non-disruptive to the movie as possible, and that can't happen when two cars driving next to each other is enough to trigger the detector. However, I also don't know exactly what the relation should be, so I've decided to instead try to Frankenstein together a robust solution from various non-robust ones.
 
@@ -77,8 +80,6 @@ $$
 
 , where $[ \cdot ]$ means "nearest integer, rounding up at 0.5, etc." The Center of Mass $\sim$ is satisfied if and only if $P = Q$. This is meant to quantify a bit about the "shape" of the luminance graph. It's rather crude, and that's why it's still tagged "EXPERIMENTAL" in Nopelepsy, but it seems to work just fine...
 
-
-
 Algorithm
 ===
 
@@ -100,6 +101,8 @@ for each frame in the video
 
   pop the front off of S
 ```
+
+Why is it set up like this? Well, it's mostly a gut instinct thing. Nopelepsy needs to have access to the luminance histogram, but I can't load the entire thing into memory. A general flash can happen in literally any chunk of time, so there's no good way of chopping up video for analysis. As to why I can't jump multiple frames at a time, I explain why in a couple paragraphs.
 
 Needless to say, the "do the detection" part is the interesting one. The way this happens goes something like this:
 
