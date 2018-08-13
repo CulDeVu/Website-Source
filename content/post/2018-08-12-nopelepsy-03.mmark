@@ -30,7 +30,106 @@ Another, smaller change is the removal of the Center of Mass domain equality. Em
 
 # OpenCV Implementation
 
+In the last post, I listed the algorithm as follows:
 
+```
+function detectAndModify()
+  F := empty list of potential flash "ballots"
+
+  for every pixel in the video dimensions
+    look at its histogram and determine all potential flashes that could happen
+
+    for every potential detected flash
+      if it flashes concurrently with some potential flash in F, let that pixel "vote" on that flash in F
+      if not, create a new "ballot", vote on it, and then add it to F
+
+  optionally reduce F by looking at its neighbors
+
+  for every potential flash ballot in F
+    for every voter on that ballot
+      check to see if there are enough other voters around it (25% of the 0.024 steradian region around it)
+      if not, continue
+
+      there is now determined to be a general flash that corresponds to some domain of the voter pixel (the necessary information is all on the ballot)
+      modify the necessary frames of that voter to get rid of it
+```
+
+This algorithm has changed very little in spirit, but very much in implementation. The "ballots" described above were originally implemented as lists of pixel coordinates, but are now described with an OpenCV bitmask. This is made possible by getting rid of the Center of Mass equality and focusing on Domain equality.
+
+A more representative algorithm looks something like this:
+
+```
+function detectAndModify()
+    B := array of bitmask "ballots", one for every possible flash domain
+
+    for every frame F in video
+        for every possible domain that can F can be a part of
+            add to the bitmask those pixels that flash on this domain to the correct bitmask in B
+
+    reduce B at least once
+
+    for every frame F in video
+        for every pixel masked in some valid bitmask in B, clamp brightness accordingly
+```
+
+The main steps are basically the same, but with the difference being that now the entire algorithm can be expressed in terms of common image processing functions operating on ballots and frames.
+
+The first block looks like this in code:
+
+```
+Mat s = frame at beginning of flash domain
+Mat e = frame at end of flash domain
+
+// the value to threshold by
+Mat truncate = max(s,e);
+truncate += luminance_thresh;
+
+// build the ballot
+Mat comp = Mat(lum_stack.get(0).size(), CV_8UC1);
+for (int mid = start + 1; mid < end; ++mid)
+{
+    Mat m = lum_stack.get(mid);
+    compare(m, truncate, comp, CMP_GT);
+    bitwise_or(ballot, comp, ballot);
+}
+```
+
+This is much less costly than doing the manual pushing and popping of coordinates into a ballot list. A separate thread is launched for each potential flash domain, so these ballots are being build asynchronously. There is a way to build them synchronously faster, as is done already in the flash removal phase, but I haven't gotten around to testing it.
+
+Speaking of flash removal, here's the new version of that:
+
+```
+// this has to be done in sequence due to differences in se_max
+Mat s = start frame of current video slice
+
+Mat cur_min = Mat(height, width, CV_32FC1, Scalar(1.0));
+for (int i = 0; i < stack_size; ++i)
+{
+    // doing this backwards is important
+    int cur = stack_size - 1 - i;
+    if (cur < 1)
+        break;
+
+    Mat m = the i'th frame in current video slice
+
+    if (cur >= 0)
+    {
+        Mat ballot = ballot for domain [0, i]
+        m.copyTo(cur_min, (m < cur_min) & ballot);
+    }
+
+    Mat se_max = max(cur_min, s);
+    se_max += user_settings.luminance_thresh;
+
+    se_max.copyTo(m, m > se_max);
+}
+```
+
+The variable `s` is set at the start due to the optimizations discussed last time. This algorithm is able to remove all flashes from all frames in the current video slice in a single sweep through the domain list. 
+
+Notice that the threshold value described above only depends on the pixel values at the ends of the domain, and is the maximum possible value it can be set to guarantee that flashes don't occur after the modification. So that means if pixel $p$ is belongs to flashes on domains $[a,b]$ and $[c,d]$, then the maximum value that $p$ can take after modification is $\min(\max(p_a, p_b), \max(p_c, p_d)) + \text{lum_thresh}$, and the pattern continues for 3 or more flash domains. Since all the domains are nested (e.g. $[0, 2], [0,3], [0,4],...$), all we have to do is keep track of the minimum value of $\max(p_0, p_a)$ (or even better, the minimum value of $p_a$) to get the maximum allowable pixel brightness, going backwards from largest domain down to smallest. This is what is happening in the `if` block above.
+
+The 
 
 # OpenCL Rewrite
 
