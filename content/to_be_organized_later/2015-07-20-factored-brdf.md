@@ -2,7 +2,6 @@
 layout: post
 title:  "Factored BRDF Representation"
 date:   2015-07-20
-categories: global-illumination math
 ---
 It's been quite a while.
 

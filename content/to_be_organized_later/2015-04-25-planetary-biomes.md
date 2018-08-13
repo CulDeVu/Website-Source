@@ -2,7 +2,6 @@
 layout: post
 title:  "Planetary Biomes"
 date:   2015-04-25
-categories: procedural-generation math graphics
 ---
 Not many images or videos this time around, unfortunately. It's mostly about updates about what I'm up to and what I'm working on.
 

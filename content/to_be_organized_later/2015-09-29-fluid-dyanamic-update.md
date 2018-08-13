@@ -2,7 +2,6 @@
 layout: post
 title:  "Fluid dynamics update"
 date:   2015-09-29
-categories: fluid-dynamics math
 ---
 
 I'm not really going to talk about much math-y stuff this time. I've covered too much ground since my last entry to be able to remember all the pitfalls I ran into. So this time I'm only really going to be talking about the general algorithm, how I deal with the pitfalls of the marker particle method, and the ongoing translation to CUDA. And probably share some of my Mario Maker levels. I'm addicted to stars :(
