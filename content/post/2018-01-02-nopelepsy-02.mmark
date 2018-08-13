@@ -74,8 +74,8 @@ Domain equality: if $[a, b]$ and $[c, d]$ are the domains of 2 potential flashes
 Center of Mass equality: Let $[a, b]$ and $[c, d]$ be as before, and also let $\left( p_{i} \right)$ and $\left( q_{i} \right)$ be the luminance histograms of the two potential flashes, respectively. Denote 
 
 $$
-P = \left[ \sum_{i=a}^{b} \frac{i p_i}{\sum p_i} \right] \\
-Q = \left[ \sum_{i=c}^{d} \frac{i q_i}{\sum q_i} \right]
+P = \left[ \sum_{i=a}^{b} \frac{i p_i}{\sum p_j} \right] \\
+Q = \left[ \sum_{i=c}^{d} \frac{i q_i}{\sum q_j} \right]
 $$
 
 , where $[ \cdot ]$ means "nearest integer, rounding up at 0.5, etc." The Center of Mass $\sim$ is satisfied if and only if $P = Q$. This is meant to quantify a bit about the "shape" of the luminance graph. It's rather crude, and that's why it's still tagged "EXPERIMENTAL" in Nopelepsy, but it seems to work just fine...

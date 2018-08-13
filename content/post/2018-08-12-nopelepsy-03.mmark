@@ -1,0 +1,37 @@
+---
+title: "2018 08 12 Nopelepsy 03"
+date: 2018-08-12T20:02:01-04:00
+draft: true
+---
+
+Hello again! This one is a doozy, but that's okay. We'll get through it together
+
+# What's changed
+
+For one, Nopelepsy is [public on Github now](https://github.com/CulDeVu/Nopelepsy)! So that's cool.
+
+There's been a big rewrite since last time. Firstly, the Java implementation was ported to C++, and a lot of the single-threaded functionality I figured out how to re-cast into algebraic operations on wide vectors. So that's cool too. In fact, that's what most of this is going to be about
+
+But first! Here's some videos. Note how much less jarring they look versus the last set of videos I showed off.
+
+[vid1]
+
+# General Changes
+
+One of the big algorithmic changes is how I'm doing the flash removal. Previously, if a domain $[a,b]$ was marked for removal, then any pixel value at time between $a$ and $b$ would be set to a linearly interpolated value between pixel values $p_a$ and $p_b$. However, this is very wasteful in terms of the "video metric".
+
+Any fool could turn a video with flashes in it to a video without just by writing the entire video with zeros. The most desirable thing for a detector is the ability to modify the video as little as possible, while still completely removing the flash. The precise metric being used is the sum of Lab-space distances, summed over all pixels and over all frames. It's pretty easy to see how this sort of criteria, if followed to the letter, could go very badly. For example, take a look at this image:
+
+[image]
+
+Despite this, minimizing the video metric is still a good criteria to follow, just don't go too crazy with it. The way it's done now is by clamping the brightness of pixel $p_c$ by $\max(p_a, p_b) + \text{lum_thresh}$. This isn't optimal, or even locally optimal per pixel, but it's a good first step.
+
+Another, smaller change is the removal of the Center of Mass domain equality. Empirically, this seemed to have no discernible effect that I could see on the output videos.
+
+# OpenCV Implementation
+
+
+
+# OpenCL Rewrite
+
+# Conclusion
